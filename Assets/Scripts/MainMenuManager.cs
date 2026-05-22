@@ -9,27 +9,25 @@ public class MainMenuManager : MonoBehaviour
 
     void Start()
     {
-        //menuCanvasGroup.DOFade(0f, 1f);
+        Time.timeScale = 1f;
 
-        //tapIcon.transform.DOLocalMove(new Vector3(0f, 50f, 0f), 2f);
-
-        Sequence s = DOTween.Sequence();
-
-        s.Append(tapIcon.transform.DOLocalMove(new Vector3(80f, -120f, 0f), 2f));
-
+        if (tapIcon != null)
+        {
+            Sequence s = DOTween.Sequence();
+            s.Append(tapIcon.transform.DOLocalMove(new Vector3(80f, -120f, 0f), 2f));
+        }
     }
 
     public void LoginButton()
     {
-        Debug.Log("LoginButton Tapped.");
-
-        SceneManager.LoadScene("GameScene");
+        Time.timeScale = 1f;
+        SceneLoader.Load("GameScene");
     }
 
     public void LatestNewsButton()
     {
         Debug.Log("LatestNewsButton Tapped.");
 
-        SceneManager.LoadScene("LatestNewsScene");
+        SceneLoader.Load("LatestSceneScene");
     }
 }
