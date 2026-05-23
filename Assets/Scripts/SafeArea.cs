@@ -1,9 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// Fits a RectTransform inside the device safe area (notches, home indicator).
-/// Attach to a full-screen UI panel under the Canvas.
-/// </summary>
 [RequireComponent(typeof(RectTransform))]
 public class SafeArea : MonoBehaviour
 {

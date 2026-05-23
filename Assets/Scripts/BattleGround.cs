@@ -1,8 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// Capsule primitives are 2 units tall (pivot at center). Floor surface is at y = 0.
-/// </summary>
 public static class BattleGround
 {
     public const float FloorY = 0f;

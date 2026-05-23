@@ -20,7 +20,7 @@ public class GameManager : MonoBehaviour
 
     [SerializeField] private Unit enemyPrefab;
 
-    [Header("Store Asset Visuals (Assign Prefabs Here)")]
+    [Header("Store Asset Visuals")]
     [SerializeField] private GameVisualSettings visualSettings;
     [SerializeField] private GameObject echoVisualPrefab;
     [SerializeField] private GameObject enemyVisualPrefab;
