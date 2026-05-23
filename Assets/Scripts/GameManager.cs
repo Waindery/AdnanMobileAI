@@ -117,6 +117,8 @@ public class GameManager : MonoBehaviour
 
         Time.timeScale = 1f;
 
+        MobileScreenSetup.Apply();
+
         ConfigureBattleCamera();
 
         BattleBackground.Create();

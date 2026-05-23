@@ -14,6 +14,7 @@ public class GameSceneBootstrap : MonoBehaviour
             return;
         }
 
+        MobileScreenSetup.Apply();
         SetupCamera();
         CreateEventSystemIfNeeded();
         CreateSpawnPoints(out Transform echoSpawn, out Transform[] enemySpawns);

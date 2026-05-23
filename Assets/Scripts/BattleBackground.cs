@@ -32,7 +32,7 @@ public static class BattleBackground
 
         Renderer renderer = plane.GetComponent<Renderer>();
         if (renderer != null)
-            renderer.material.color = color;
+            renderer.sharedMaterial = CreateSafeMaterial(name, color);
     }
 
     private static void CreateAccentStripes(Transform parent)
@@ -49,7 +49,30 @@ public static class BattleBackground
 
             Renderer renderer = stripe.GetComponent<Renderer>();
             if (renderer != null)
-                renderer.material.color = new Color(0.15f, 0.35f, 0.55f, 0.6f);
+                renderer.sharedMaterial = CreateSafeMaterial(stripe.name, new Color(0.15f, 0.35f, 0.55f, 1f));
         }
+    }
+
+    private static Material CreateSafeMaterial(string name, Color color)
+    {
+        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+        if (shader == null)
+            shader = Shader.Find("Sprites/Default");
+        if (shader == null)
+            shader = Shader.Find("Unlit/Color");
+        if (shader == null)
+            shader = Shader.Find("Standard");
+
+        Material material = new Material(shader)
+        {
+            name = $"Battle_{name}_Material"
+        };
+
+        if (material.HasProperty("_BaseColor"))
+            material.SetColor("_BaseColor", color);
+        if (material.HasProperty("_Color"))
+            material.SetColor("_Color", color);
+
+        return material;
     }
 }
