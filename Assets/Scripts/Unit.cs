@@ -36,6 +36,7 @@ public class Unit : MonoBehaviour
 
     public event Action<Unit> OnDeath;
     public event Action<Unit, Unit> OnKilled;
+    public event Action<Unit, float, Unit> OnDamageTaken;
     public event Action OnAttackPerformed;
     public event Action OnDamaged;
 
@@ -76,7 +77,10 @@ public class Unit : MonoBehaviour
             lastAttacker = attacker;
 
         currentHP = Mathf.Max(0f, currentHP - amount);
+        OnDamageTaken?.Invoke(this, amount, attacker);
         OnDamaged?.Invoke();
+
+        FloatingDamageNumber.Show(transform.position + Vector3.up * 0.9f, amount, attacker);
 
         if (currentHP <= 0f)
         {

@@ -47,12 +47,14 @@ public static class GameSceneBuilder
         Transform echoSpawn = CreateSpawnPoint("EchoSpawn", BattleGround.SpawnPosition(-2.5f, 0f));
         Transform[] enemySpawns =
         {
-            CreateSpawnPoint("EnemySpawn0", BattleGround.SpawnPosition(3f, -2f)),
-            CreateSpawnPoint("EnemySpawn1", BattleGround.SpawnPosition(3f, 0f)),
-            CreateSpawnPoint("EnemySpawn2", BattleGround.SpawnPosition(3f, 2f)),
-            CreateSpawnPoint("EnemySpawn3", BattleGround.SpawnPosition(4.2f, -1f)),
-            CreateSpawnPoint("EnemySpawn4", BattleGround.SpawnPosition(4.2f, 1f)),
-            CreateSpawnPoint("EnemySpawn5", BattleGround.SpawnPosition(5.2f, 0f))
+            CreateSpawnPoint("EnemySpawn0", BattleGround.SpawnPosition(3.2f, -2.7f)),
+            CreateSpawnPoint("EnemySpawn1", BattleGround.SpawnPosition(3.2f, -0.9f)),
+            CreateSpawnPoint("EnemySpawn2", BattleGround.SpawnPosition(3.2f, 0.9f)),
+            CreateSpawnPoint("EnemySpawn3", BattleGround.SpawnPosition(3.2f, 2.7f)),
+            CreateSpawnPoint("EnemySpawn4", BattleGround.SpawnPosition(4.55f, -1.8f)),
+            CreateSpawnPoint("EnemySpawn5", BattleGround.SpawnPosition(4.55f, 0f)),
+            CreateSpawnPoint("EnemySpawn6", BattleGround.SpawnPosition(4.55f, 1.8f)),
+            CreateSpawnPoint("EnemySpawn7", BattleGround.SpawnPosition(5.9f, 0f))
         };
 
         GameObject systems = new GameObject("GameSystems");
@@ -157,8 +159,10 @@ public static class GameSceneBuilder
         if (cam == null)
             return;
 
-        cam.transform.position = new Vector3(0f, 2.5f, -7f);
-        cam.transform.rotation = Quaternion.Euler(12f, 0f, 0f);
+        cam.orthographic = false;
+        cam.fieldOfView = 50f;
+        cam.transform.position = new Vector3(0.4f, 6.5f, -6.6f);
+        cam.transform.rotation = Quaternion.Euler(48f, 0f, 0f);
         cam.backgroundColor = new Color(0.12f, 0.14f, 0.18f);
     }
 
@@ -248,6 +252,7 @@ public static class GameSceneBuilder
 
         SerializedObject uiSo = new SerializedObject(ui);
         uiSo.FindProperty("waveText").objectReferenceValue = waveText;
+        uiSo.FindProperty("echoHpText").objectReferenceValue = hpSlider.GetComponentInChildren<TextMeshProUGUI>();
         uiSo.FindProperty("echoHpSlider").objectReferenceValue = hpSlider;
         uiSo.FindProperty("pausePanel").objectReferenceValue = pausePanel;
         uiSo.FindProperty("winPanel").objectReferenceValue = winPanel;
@@ -375,6 +380,11 @@ public static class GameSceneBuilder
 
         slider.fillRect = fillRect;
         slider.targetGraphic = fillImage;
+
+        TextMeshProUGUI hpText = CreateTMP("HPText", sliderRect, "100 / 100", 24f, TextAlignmentOptions.Center);
+        hpText.raycastTarget = false;
+        StretchFull(hpText.rectTransform);
+
         return slider;
     }
 

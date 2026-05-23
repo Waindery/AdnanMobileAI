@@ -10,6 +10,7 @@ public class UIManager : MonoBehaviour
     [Header("HUD")]
     [SerializeField] private TextMeshProUGUI waveText;
     [SerializeField] private TextMeshProUGUI currencyText;
+    [SerializeField] private TextMeshProUGUI echoHpText;
     [SerializeField] private Slider echoHpSlider;
 
     [Header("Gacha")]
@@ -62,6 +63,7 @@ public class UIManager : MonoBehaviour
             echoHpSlider.minValue = 0f;
             echoHpSlider.maxValue = 1f;
             echoHpSlider.value = 1f;
+            EnsureEchoHPText();
         }
 
         if (PlayerWallet.Instance != null)
@@ -100,10 +102,10 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    public void UpdateWaveText(int level, int wave, int totalWaves)
+    public void UpdateWaveText(int level, int wave, int totalWaves, bool bossActive = false)
     {
         if (waveText != null)
-            waveText.text = $"Lv.{level}  Wave {wave}/{totalWaves}";
+            waveText.text = bossActive ? $"Lv.{level}  Final Boss" : $"Lv.{level}  Wave {wave}/{totalWaves}";
     }
 
     public void UpdateLevelDisplay(int level)
@@ -119,6 +121,7 @@ public class UIManager : MonoBehaviour
 
         hpTween?.Kill();
         hpTween = echoHpSlider.DOValue(Mathf.Clamp01(ratio), 0.2f);
+        UpdateEchoHPText();
     }
 
     public void OnEchoDamaged()
@@ -127,12 +130,50 @@ public class UIManager : MonoBehaviour
             UpdateHPBar(echo.HPRatio);
     }
 
+    private void UpdateEchoHPText()
+    {
+        EnsureEchoHPText();
+
+        if (echoHpText == null || echo == null)
+            return;
+
+        echoHpText.text = $"{Mathf.CeilToInt(echo.CurrentHP)} / {Mathf.CeilToInt(echo.MaxHP)}";
+    }
+
+    private void EnsureEchoHPText()
+    {
+        if (echoHpText != null || echoHpSlider == null)
+            return;
+
+        GameObject textGo = new GameObject("HPText", typeof(RectTransform));
+        RectTransform rect = textGo.GetComponent<RectTransform>();
+        rect.SetParent(echoHpSlider.transform, false);
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        echoHpText = textGo.AddComponent<TextMeshProUGUI>();
+        echoHpText.text = "100 / 100";
+        echoHpText.fontSize = 24f;
+        echoHpText.alignment = TextAlignmentOptions.Center;
+        echoHpText.color = Color.white;
+        echoHpText.raycastTarget = false;
+    }
+
     private void PlayEchoAttackJuice()
     {
         if (echo == null)
             return;
 
-        echo.transform.DOPunchScale(Vector3.one * 0.2f, 0.2f, 5, 0.5f);
+        echo.transform.DOKill();
+        echo.transform.localScale = Vector3.one;
+        echo.transform.DOPunchScale(Vector3.one * 0.2f, 0.2f, 5, 0.5f)
+            .OnComplete(() =>
+            {
+                if (echo != null)
+                    echo.transform.localScale = Vector3.one;
+            });
     }
 
     public void UpdateCurrencyDisplay(int amount)
@@ -154,6 +195,9 @@ public class UIManager : MonoBehaviour
     {
         if (gachaPanel == null)
             return;
+
+        if (pausePanel != null)
+            pausePanel.SetActive(false);
 
         gachaPanel.SetActive(true);
         if (gachaResultText != null)
@@ -188,13 +232,13 @@ public class UIManager : MonoBehaviour
             gachaResultText.transform.localScale = Vector3.one;
 
             if (gotReward)
-                gachaResultText.transform.DOPunchScale(Vector3.one * 0.15f, 0.25f, 4, 0.5f);
+                gachaResultText.transform.DOPunchScale(Vector3.one * 0.15f, 0.25f, 4, 0.5f).SetUpdate(true);
             else
-                gachaResultText.transform.DOShakePosition(0.35f, new Vector3(12f, 0f, 0f), 12, 90f, false, true);
+                gachaResultText.transform.DOShakePosition(0.35f, new Vector3(12f, 0f, 0f), 12, 90f, false, true).SetUpdate(true);
         }
 
         if (success && gotReward && pullButton != null)
-            pullButton.transform.DOPunchScale(Vector3.one * 0.1f, 0.2f, 3, 0.5f);
+            pullButton.transform.DOPunchScale(Vector3.one * 0.1f, 0.2f, 3, 0.5f).SetUpdate(true);
     }
 
     public void OnPausePressed()
@@ -206,6 +250,7 @@ public class UIManager : MonoBehaviour
             gachaPanel.SetActive(false);
 
         pausePanel.SetActive(true);
+        SetPanelRootScale(pausePanel, Vector3.one);
         Time.timeScale = 0f;
     }
 
@@ -235,13 +280,19 @@ public class UIManager : MonoBehaviour
         if (winSubtitleText != null)
         {
             winSubtitleText.gameObject.SetActive(true);
-            winSubtitleText.text = completedLevel == 1
-                ? $"+{GameSession.Level2CrystalBonus} crystals on Level 2!\nPull allies & upgrades, then continue."
+            int nextLevel = completedLevel + 1;
+            winSubtitleText.text = completedLevel < GameSession.MaxLevel
+                ? $"+{GameSession.GetLevelStartBonus(nextLevel)} crystals on Level {nextLevel}!\nPull allies & upgrades, then continue."
                 : string.Empty;
         }
 
         if (winContinueButton != null)
+        {
             winContinueButton.gameObject.SetActive(completedLevel < GameSession.MaxLevel);
+            TextMeshProUGUI label = winContinueButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (label != null)
+                label.text = $"Level {completedLevel + 1}";
+        }
 
         PlayEndPanelAnimation(winPanelRoot, winTitleGroup, GetActiveWinButtons());
     }
@@ -307,6 +358,7 @@ public class UIManager : MonoBehaviour
         panelRoot.localScale = Vector3.zero;
 
         Sequence sequence = DOTween.Sequence();
+        sequence.SetUpdate(true);
         sequence.Append(panelRoot.DOScale(1.1f, 0.3f).SetEase(Ease.OutBack));
         sequence.Append(panelRoot.DOScale(1f, 0.1f));
 
@@ -314,6 +366,16 @@ public class UIManager : MonoBehaviour
             sequence.Append(titleGroup.DOFade(1f, 0.2f));
 
         sequence.OnComplete(() => SetPanelButtonsEnabled(buttons, true));
+    }
+
+    private static void SetPanelRootScale(GameObject panel, Vector3 scale)
+    {
+        if (panel == null)
+            return;
+
+        Transform root = panel.transform.Find("PanelRoot");
+        if (root != null)
+            root.localScale = scale;
     }
 
     private static void SetPanelButtonsEnabled(Button[] buttons, bool enabled)
@@ -383,5 +445,11 @@ public class UIManager : MonoBehaviour
         gachaCostText = costText;
         pullButton = singlePullButton;
         UpdateGachaCostText();
+    }
+
+    public void ConfigureEchoHPText(TextMeshProUGUI hpText)
+    {
+        echoHpText = hpText;
+        UpdateEchoHPText();
     }
 }

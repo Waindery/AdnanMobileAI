@@ -9,13 +9,13 @@ public static class BattleBackground
 
         GameObject arena = new GameObject("BattleArena");
 
-        CreatePlane(arena.transform, "Floor", new Vector3(0f, BattleGround.FloorY, 0f), new Vector3(12f, 1f, 8f),
+        CreatePlane(arena.transform, "Floor", new Vector3(0f, BattleGround.FloorY, 0f), new Vector3(16f, 1f, 11f),
             new Color(0.08f, 0.1f, 0.16f));
 
-        CreatePlane(arena.transform, "BackWall", new Vector3(0f, 2.5f, 4f), new Vector3(14f, 5f, 0.2f),
+        CreatePlane(arena.transform, "BackWall", new Vector3(0f, 2.5f, 5.5f), new Vector3(18f, 5f, 0.2f),
             new Color(0.05f, 0.08f, 0.14f));
 
-        CreatePlane(arena.transform, "SideGlow", new Vector3(0f, 1.2f, 2f), new Vector3(10f, 3f, 0.1f),
+        CreatePlane(arena.transform, "SideGlow", new Vector3(0f, 1.2f, 3f), new Vector3(14f, 3f, 0.1f),
             new Color(0.12f, 0.18f, 0.32f));
 
         CreateAccentStripes(arena.transform);

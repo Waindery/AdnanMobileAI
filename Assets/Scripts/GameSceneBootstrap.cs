@@ -4,10 +4,6 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
-/// <summary>
-/// Builds the game scene at runtime when opened before running the editor setup menu.
-/// After running Echo Protocol &gt; Build Game Scene, this component is not required.
-/// </summary>
 public class GameSceneBootstrap : MonoBehaviour
 {
     private void Awake()
@@ -32,8 +28,10 @@ public class GameSceneBootstrap : MonoBehaviour
         if (cam == null)
             return;
 
-        cam.transform.position = new Vector3(0f, 2.5f, -7f);
-        cam.transform.rotation = Quaternion.Euler(12f, 0f, 0f);
+        cam.orthographic = false;
+        cam.fieldOfView = 50f;
+        cam.transform.position = new Vector3(0.4f, 6.5f, -6.6f);
+        cam.transform.rotation = Quaternion.Euler(48f, 0f, 0f);
         cam.backgroundColor = new Color(0.12f, 0.14f, 0.18f);
     }
 
@@ -54,12 +52,14 @@ public class GameSceneBootstrap : MonoBehaviour
         echoSpawn = CreateSpawn("EchoSpawn", BattleGround.SpawnPosition(-2.5f, 0f));
         enemySpawns = new[]
         {
-            CreateSpawn("EnemySpawn0", BattleGround.SpawnPosition(3f, -2f)),
-            CreateSpawn("EnemySpawn1", BattleGround.SpawnPosition(3f, 0f)),
-            CreateSpawn("EnemySpawn2", BattleGround.SpawnPosition(3f, 2f)),
-            CreateSpawn("EnemySpawn3", BattleGround.SpawnPosition(4.2f, -1f)),
-            CreateSpawn("EnemySpawn4", BattleGround.SpawnPosition(4.2f, 1f)),
-            CreateSpawn("EnemySpawn5", BattleGround.SpawnPosition(5.2f, 0f))
+            CreateSpawn("EnemySpawn0", BattleGround.SpawnPosition(3.2f, -2.7f)),
+            CreateSpawn("EnemySpawn1", BattleGround.SpawnPosition(3.2f, -0.9f)),
+            CreateSpawn("EnemySpawn2", BattleGround.SpawnPosition(3.2f, 0.9f)),
+            CreateSpawn("EnemySpawn3", BattleGround.SpawnPosition(3.2f, 2.7f)),
+            CreateSpawn("EnemySpawn4", BattleGround.SpawnPosition(4.55f, -1.8f)),
+            CreateSpawn("EnemySpawn5", BattleGround.SpawnPosition(4.55f, 0f)),
+            CreateSpawn("EnemySpawn6", BattleGround.SpawnPosition(4.55f, 1.8f)),
+            CreateSpawn("EnemySpawn7", BattleGround.SpawnPosition(5.9f, 0f))
         };
     }
 
@@ -138,6 +138,7 @@ public class GameSceneBootstrap : MonoBehaviour
 
         ui.Configure(waveText, hpSlider, pausePanel, winPanel, losePanel, winRoot, loseRoot, winTitle, winSubtitle, winTitleGroup, loseTitleGroup,
             winContinue, new[] { winRestart, winMenu }, new[] { loseRestart, loseMenu });
+        ui.ConfigureEchoHPText(hpSlider.GetComponentInChildren<TextMeshProUGUI>());
         ui.ConfigureGacha(currencyText, gachaPanel, gachaResult, gachaCost, pullButton);
 
         winContinue.onClick.AddListener(ui.OnContinueToLevel2Pressed);
@@ -228,6 +229,11 @@ public class GameSceneBootstrap : MonoBehaviour
         RectTransform fillRect = fill.GetComponent<RectTransform>();
         Stretch(fillRect);
         slider.fillRect = fillRect;
+
+        TextMeshProUGUI hpText = CreateText("HPText", sliderGo.GetComponent<RectTransform>(), "100 / 100", 24f, TextAlignmentOptions.Center);
+        hpText.raycastTarget = false;
+        Stretch(hpText.rectTransform);
+
         return slider;
     }
 

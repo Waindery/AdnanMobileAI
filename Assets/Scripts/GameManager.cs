@@ -20,6 +20,13 @@ public class GameManager : MonoBehaviour
 
     [SerializeField] private Unit enemyPrefab;
 
+    [Header("Store Asset Visuals (Assign Prefabs Here)")]
+    [SerializeField] private GameVisualSettings visualSettings;
+    [SerializeField] private GameObject echoVisualPrefab;
+    [SerializeField] private GameObject enemyVisualPrefab;
+    [SerializeField] private GameObject allyVisualPrefab;
+    [SerializeField] private GameObject finalBossVisualPrefab;
+
     [SerializeField] private Transform echoSpawnPoint;
 
     [SerializeField] private Transform[] enemySpawnPoints;
@@ -30,7 +37,7 @@ public class GameManager : MonoBehaviour
 
     [SerializeField] private int wavesPerLevel = 3;
 
-    [SerializeField] private float echoKillHealPercent = 0.15f;
+    [SerializeField] private float echoKillHealPercent = 0.1f;
 
     [SerializeField] private int crystalsPerKill = 30;
 
@@ -40,6 +47,8 @@ public class GameManager : MonoBehaviour
 
     private readonly List<Unit> allies = new List<Unit>();
 
+    private readonly List<Unit> livingPlayerUnits = new List<Unit>();
+
     private Unit echo;
 
     private Unit allyPrefab;
@@ -48,7 +57,7 @@ public class GameManager : MonoBehaviour
 
     private int currentWave;
 
-    private int allySpawnIndex;
+    private bool bossActive;
 
     private bool battleEnded;
 
@@ -84,6 +93,8 @@ public class GameManager : MonoBehaviour
 
         currentLevel = GameSession.CurrentLevel;
 
+        echoKillHealPercent = 0.1f;
+
     }
 
 
@@ -106,15 +117,44 @@ public class GameManager : MonoBehaviour
 
         Time.timeScale = 1f;
 
+        ConfigureBattleCamera();
+
         BattleBackground.Create();
 
         EnsurePrefabs();
+
+        LoadVisualSettings();
 
         SpawnEcho();
 
         StartWave(1);
 
         UIManager.Instance?.UpdateLevelDisplay(currentLevel);
+
+    }
+
+
+
+    private static void ConfigureBattleCamera()
+
+    {
+
+        Camera cam = Camera.main;
+
+        if (cam == null)
+
+            return;
+
+
+
+        cam.orthographic = false;
+        cam.fieldOfView = 50f;
+
+        cam.transform.position = new Vector3(0.4f, 6.5f, -6.6f);
+
+        cam.transform.rotation = Quaternion.Euler(48f, 0f, 0f);
+
+        cam.backgroundColor = new Color(0.12f, 0.14f, 0.18f);
 
     }
 
@@ -139,6 +179,48 @@ public class GameManager : MonoBehaviour
         if (allyPrefab == null)
 
             allyPrefab = CreateRuntimeUnitPrefab("Ally", UnitTeam.Player, UnitRole.Ally, new Color(0.2f, 0.85f, 0.35f));
+
+    }
+
+
+
+    private void LoadVisualSettings()
+
+    {
+
+        if (visualSettings == null)
+
+            visualSettings = Resources.Load<GameVisualSettings>("GameVisualSettings");
+
+
+
+        if (visualSettings == null)
+
+            return;
+
+
+
+        if (echoVisualPrefab == null)
+
+            echoVisualPrefab = visualSettings.EchoVisualPrefab;
+
+
+
+        if (enemyVisualPrefab == null)
+
+            enemyVisualPrefab = visualSettings.EnemyVisualPrefab;
+
+
+
+        if (allyVisualPrefab == null)
+
+            allyVisualPrefab = visualSettings.AllyVisualPrefab;
+
+
+
+        if (finalBossVisualPrefab == null)
+
+            finalBossVisualPrefab = visualSettings.FinalBossVisualPrefab;
 
     }
 
@@ -196,6 +278,13 @@ public class GameManager : MonoBehaviour
 
         echo.Configure(UnitTeam.Player, 100f, 20f, 1.5f, UnitRole.Echo);
 
+        ApplyVisualPrefab(
+            echo,
+            echoVisualPrefab,
+            visualSettings != null ? visualSettings.EchoLocalPosition : Vector3.zero,
+            visualSettings != null ? visualSettings.EchoLocalRotation : Vector3.zero,
+            visualSettings != null ? visualSettings.EchoLocalScale : Vector3.one);
+
         echo.OnDeath += HandleEchoDeath;
 
 
@@ -232,9 +321,67 @@ public class GameManager : MonoBehaviour
 
 
 
+    private Vector3 GetAllyFormationPosition(int index)
+
+    {
+
+        Vector3 basePosition = GetEchoSpawnPosition();
+
+        float zOffset = (index % 4 - 1.5f) * 1.15f;
+
+        float xOffset = -1f - (index / 4) * 0.9f;
+
+        return basePosition + new Vector3(xOffset, 0f, zOffset);
+
+    }
+
+
+
+    private void ResetPlayerFormation()
+
+    {
+
+        if (echo != null && echo.IsAlive)
+
+        {
+
+            echo.transform.position = GetEchoSpawnPosition();
+
+            ResetEchoScale();
+
+        }
+
+
+
+        int formationIndex = 0;
+
+        for (int i = 0; i < allies.Count; i++)
+
+        {
+
+            Unit ally = allies[i];
+
+            if (ally == null || !ally.IsAlive)
+
+                continue;
+
+
+
+            ally.transform.position = GetAllyFormationPosition(formationIndex);
+
+            formationIndex++;
+
+        }
+
+    }
+
+
+
     private void StartWave(int wave)
 
     {
+
+        bossActive = false;
 
         currentWave = wave;
 
@@ -262,6 +409,16 @@ public class GameManager : MonoBehaviour
 
             enemy.Configure(UnitTeam.Enemy, enemyHp, enemyDamage, enemyCooldown);
 
+            ApplyVisualPrefab(
+                enemy,
+                enemyVisualPrefab,
+                visualSettings != null ? visualSettings.EnemyLocalPosition : Vector3.zero,
+                visualSettings != null ? visualSettings.EnemyLocalRotation : Vector3.zero,
+                visualSettings != null ? visualSettings.EnemyLocalScale : Vector3.one);
+
+            if (enemy.GetComponent<WorldUnitHealthBar>() == null)
+                enemy.gameObject.AddComponent<WorldUnitHealthBar>();
+
             enemy.OnKilled += HandleEnemyKilled;
 
             livingEnemies.Add(enemy);
@@ -278,9 +435,7 @@ public class GameManager : MonoBehaviour
 
         int count = 3 + wave;
 
-        if (level >= 2)
-
-            count += 1;
+        count += Mathf.Max(0, level - 1);
 
 
 
@@ -303,15 +458,10 @@ public class GameManager : MonoBehaviour
 
 
         if (level >= 2)
-
         {
-
-            hp = 50f;
-
-            damage = 12f;
-
-            cooldown = 1.85f;
-
+            hp = 40f + (level - 1) * 18f;
+            damage = 10f + (level - 1) * 4f;
+            cooldown = Mathf.Max(1.25f, 2f - (level - 1) * 0.12f);
         }
 
     }
@@ -322,21 +472,71 @@ public class GameManager : MonoBehaviour
 
     {
 
-        if (enemySpawnPoints != null && index < enemySpawnPoints.Length && enemySpawnPoints[index] != null)
-
-            return BattleGround.OnGround(enemySpawnPoints[index].position);
-
-
-
-        int row = index / 3;
-
-        int column = index % 3;
-
-        float x = 3f + row * 0.9f;
-
-        float z = -2f + column * 2f;
+        int row = index / 4;
+        int column = index % 4;
+        float x = 3.2f + row * 1.35f;
+        float z = -2.7f + column * 1.8f;
 
         return BattleGround.SpawnPosition(x, z);
+
+    }
+
+
+
+    private void StartBossEncounter()
+
+    {
+
+        bossActive = true;
+
+        currentWave = wavesPerLevel + 1;
+
+        UpdateWaveHud();
+
+
+
+        GetBossStatsForLevel(currentLevel, out float bossHp, out float bossDamage, out float bossCooldown);
+
+        Vector3 spawnPosition = BattleGround.SpawnPosition(5.2f, 0f);
+
+        Unit boss = Instantiate(enemyPrefab, spawnPosition, Quaternion.identity);
+
+        boss.name = $"Level {currentLevel} Final Boss";
+
+        boss.transform.localScale = Vector3.one * 1.45f;
+
+        boss.transform.position = new Vector3(spawnPosition.x, 1.45f, spawnPosition.z);
+
+        boss.gameObject.SetActive(true);
+
+        boss.Configure(UnitTeam.Enemy, bossHp, bossDamage, bossCooldown);
+
+        bool hasBossVisual = finalBossVisualPrefab != null;
+        ApplyVisualPrefab(
+            boss,
+            hasBossVisual ? finalBossVisualPrefab : enemyVisualPrefab,
+            visualSettings != null ? (hasBossVisual ? visualSettings.FinalBossLocalPosition : visualSettings.EnemyLocalPosition) : Vector3.zero,
+            visualSettings != null ? (hasBossVisual ? visualSettings.FinalBossLocalRotation : visualSettings.EnemyLocalRotation) : Vector3.zero,
+            visualSettings != null ? (hasBossVisual ? visualSettings.FinalBossLocalScale : visualSettings.EnemyLocalScale) : Vector3.one);
+
+        if (boss.GetComponent<WorldUnitHealthBar>() == null)
+            boss.gameObject.AddComponent<WorldUnitHealthBar>();
+
+        boss.OnKilled += HandleEnemyKilled;
+
+        livingEnemies.Add(boss);
+
+    }
+
+
+
+    private static void GetBossStatsForLevel(int level, out float hp, out float damage, out float cooldown)
+
+    {
+
+        hp = 150f + level * 75f;
+        damage = 12f + level * 5f;
+        cooldown = Mathf.Max(1.05f, 1.9f - level * 0.12f);
 
     }
 
@@ -346,7 +546,7 @@ public class GameManager : MonoBehaviour
 
     {
 
-        UIManager.Instance?.UpdateWaveText(currentLevel, currentWave, wavesPerLevel);
+        UIManager.Instance?.UpdateWaveText(currentLevel, currentWave, wavesPerLevel, bossActive);
 
     }
 
@@ -466,6 +666,89 @@ public class GameManager : MonoBehaviour
 
 
 
+    public IReadOnlyList<Unit> GetLivingUnits(UnitTeam team)
+
+    {
+
+        if (team == UnitTeam.Enemy)
+
+            return livingEnemies;
+
+
+
+        livingPlayerUnits.Clear();
+
+        if (echo != null && echo.IsAlive)
+
+            livingPlayerUnits.Add(echo);
+
+
+
+        for (int i = 0; i < allies.Count; i++)
+
+        {
+
+            Unit ally = allies[i];
+
+            if (ally != null && ally.IsAlive)
+
+                livingPlayerUnits.Add(ally);
+
+        }
+
+
+
+        return livingPlayerUnits;
+
+    }
+
+
+
+    private void ApplyVisualPrefab(
+        Unit unit,
+        GameObject visualPrefab,
+        Vector3 localPosition,
+        Vector3 localRotation,
+        Vector3 localScale)
+
+    {
+
+        if (unit == null || visualPrefab == null)
+
+            return;
+
+
+
+        Transform oldVisual = unit.transform.Find("UnitVisual");
+
+        if (oldVisual != null)
+
+            Destroy(oldVisual.gameObject);
+
+
+
+        Renderer[] placeholderRenderers = unit.GetComponentsInChildren<Renderer>();
+
+        for (int i = 0; i < placeholderRenderers.Length; i++)
+
+            placeholderRenderers[i].enabled = false;
+
+
+
+        GameObject visual = Instantiate(visualPrefab, unit.transform);
+
+        visual.name = "UnitVisual";
+
+        visual.transform.localPosition = localPosition;
+
+        visual.transform.localRotation = Quaternion.Euler(localRotation);
+
+        visual.transform.localScale = localScale;
+
+    }
+
+
+
     public string ApplyGachaReward(GachaRewardType reward)
 
     {
@@ -544,8 +827,6 @@ public class GameManager : MonoBehaviour
 
         echo.UpgradeStats(bonusHp, bonusDamage);
 
-        echo.transform.DOPunchScale(Vector3.one * 0.25f, 0.3f, 6, 0.5f);
-
     }
 
 
@@ -574,15 +855,7 @@ public class GameManager : MonoBehaviour
 
 
 
-        Vector3 basePosition = GetEchoSpawnPosition();
-
-        float zOffset = (allySpawnIndex % 3 - 1) * 1.2f;
-
-        float xOffset = -1f - (allySpawnIndex / 3) * 0.8f;
-
-        Vector3 spawnPosition = basePosition + new Vector3(xOffset, 0f, zOffset);
-
-        allySpawnIndex++;
+        Vector3 spawnPosition = GetAllyFormationPosition(allies.Count);
 
 
 
@@ -593,6 +866,13 @@ public class GameManager : MonoBehaviour
         ally.name = $"Ally_{allies.Count + 1}";
 
         ally.Configure(UnitTeam.Player, 60f, 15f, 2f, UnitRole.Ally);
+
+        ApplyVisualPrefab(
+            ally,
+            allyVisualPrefab,
+            visualSettings != null ? visualSettings.AllyLocalPosition : Vector3.zero,
+            visualSettings != null ? visualSettings.AllyLocalRotation : Vector3.zero,
+            visualSettings != null ? visualSettings.AllyLocalScale : Vector3.one);
 
         ally.OnDeath += HandleAllyDeath;
 
@@ -638,9 +918,17 @@ public class GameManager : MonoBehaviour
 
 
 
+        ResetPlayerFormation();
+
+
+
         if (currentWave < wavesPerLevel)
 
             StartCoroutine(SpawnNextWaveAfterDelay());
+
+        else if (!bossActive)
+
+            StartCoroutine(SpawnBossAfterDelay());
 
         else
 
@@ -687,7 +975,28 @@ public class GameManager : MonoBehaviour
 
         RefreshEchoHud();
 
-        echo.transform.DOPunchScale(Vector3.one * 0.12f, 0.2f, 4, 0.6f);
+        echo.transform.DOKill();
+        echo.transform.localScale = Vector3.one;
+        echo.transform.DOPunchScale(Vector3.one * 0.12f, 0.2f, 4, 0.6f)
+            .OnComplete(ResetEchoScale);
+    }
+
+
+
+    private void ResetEchoScale()
+
+    {
+
+        if (echo == null)
+
+            return;
+
+
+
+        echo.transform.DOKill();
+
+        echo.transform.localScale = Vector3.one;
+
     }
 
 
@@ -710,6 +1019,24 @@ public class GameManager : MonoBehaviour
 
 
 
+    private IEnumerator SpawnBossAfterDelay()
+
+    {
+
+        yield return new WaitForSeconds(waveDelay);
+
+        if (battleEnded || echo == null || !echo.IsAlive)
+
+            yield break;
+
+
+
+        StartBossEncounter();
+
+    }
+
+
+
     private void HandleLevelComplete()
 
     {
@@ -719,6 +1046,8 @@ public class GameManager : MonoBehaviour
             return;
 
 
+
+        ResetEchoScale();
 
         battleEnded = true;
 
@@ -776,7 +1105,7 @@ public class GameManager : MonoBehaviour
 
     {
 
-        if (currentLevel >= 2)
+        if (currentLevel >= GameSession.MaxLevel)
 
             return;
 
@@ -786,17 +1115,19 @@ public class GameManager : MonoBehaviour
 
         UIManager.Instance?.HideWinPanel();
 
+        ResetPlayerFormation();
 
 
-        currentLevel = 2;
 
-        GameSession.CurrentLevel = 2;
+        currentLevel++;
+
+        GameSession.CurrentLevel = currentLevel;
 
         battleEnded = false;
 
 
 
-        PlayerWallet.Instance?.AddCrystals(GameSession.Level2CrystalBonus);
+        PlayerWallet.Instance?.AddCrystals(GameSession.GetLevelStartBonus(currentLevel));
 
 
 
